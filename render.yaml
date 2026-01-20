@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: house-price-prediction-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --config gunicorn_config.py
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      - key: GUNICORN_WORKERS
+        value: "4"
+    healthCheckPath: /health
+    autoDeploy: true

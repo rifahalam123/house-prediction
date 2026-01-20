@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>House Price Predictor</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 520px;
+            width: 100%;
+        }
+        h1 { color: #1a1a1a; text-align: center; margin-bottom: 5px; font-size: 32px; }
+        .subtitle { color: #666; text-align: center; margin-bottom: 25px; font-size: 14px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 6px; color: #333; font-weight: 600; font-size: 13px; }
+        input { 
+            width: 100%;
+            padding: 11px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        input:focus { outline: none; border-color: #667eea; background-color: #f9f9ff; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 5px;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4); }
+        button:active { transform: translateY(0); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .api-section { background: #f5f5f5; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
+        .api-section label { margin-bottom: 6px; }
+        .api-section input { font-size: 12px; margin-bottom: 5px; }
+        .api-section small { color: #999; font-size: 11px; display: block; margin-top: 5px; }
+        .result { 
+            background: #f0fef5;
+            border: 2px solid #10b981;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            display: none;
+            margin-top: 20px;
+        }
+        .result.show { display: block; animation: slideIn 0.3s ease; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .result-label { color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+        .result-price { font-size: 42px; font-weight: 700; color: #10b981; margin-bottom: 8px; }
+        .result-details { color: #666; font-size: 12px; }
+        .error { 
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 15px;
+            display: none;
+            font-size: 13px;
+        }
+        .error.show { display: block; }
+        @media (max-width: 480px) { .form-row { grid-template-columns: 1fr; } .container { padding: 25px; } h1 { font-size: 26px; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏠 House Price Predictor</h1>
+        <p class="subtitle">Get an accurate estimate in seconds</p>
+
+        <div class="api-section">
+            <label>API Endpoint</label>
+            <input type="text" id="apiUrl" value="http://127.0.0.1:5000" placeholder="http://127.0.0.1:5000">
+            <small>Update if running on different server</small>
+        </div>
+
+        <form id="predictionForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Bedrooms</label>
+                    <input type="number" id="bedrooms" min="1" max="10" value="3" required>
+                </div>
+                <div class="form-group">
+                    <label>Bathrooms</label>
+                    <input type="number" id="bathrooms" min="1" max="10" step="0.5" value="2" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Square Feet</label>
+                    <input type="number" id="sqft" min="100" max="50000" value="2000" required>
+                </div>
+                <div class="form-group">
+                    <label>Age (years)</label>
+                    <input type="number" id="age" min="0" max="100" value="10" required>
+                </div>
+            </div>
+
+            <button type="submit">Predict Price</button>
+        </form>
+
+        <div id="result" class="result">
+            <div class="result-label">Estimated Value</div>
+            <div class="result-price" id="predictedPrice"></div>
+            <div class="result-details" id="resultDetails"></div>
+        </div>
+
+        <div id="error" class="error"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById('predictionForm');
+        const resultDiv = document.getElementById('result');
+        const errorDiv = document.getElementById('error');
+        const priceElement = document.getElementById('predictedPrice');
+        const resultDetails = document.getElementById('resultDetails');
+        const apiUrlInput = document.getElementById('apiUrl');
+        const submitButton = form.querySelector('button');
+
+        const savedApiUrl = localStorage.getItem('hppApiUrl');
+        if (savedApiUrl) apiUrlInput.value = savedApiUrl;
+
+        apiUrlInput.addEventListener('change', () => {
+            const apiUrl = apiUrlInput.value.trim();
+            if (apiUrl) localStorage.setItem('hppApiUrl', apiUrl);
+        });
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const apiUrl = apiUrlInput.value.trim();
+            if (!apiUrl) { showError('Please enter the API endpoint'); return; }
+
+            const formData = {
+                bedrooms: parseFloat(document.getElementById('bedrooms').value),
+                bathrooms: parseFloat(document.getElementById('bathrooms').value),
+                sqft: parseFloat(document.getElementById('sqft').value),
+                age: parseFloat(document.getElementById('age').value)
+            };
+
+            if (Object.values(formData).some(v => isNaN(v) || v < 0)) {
+                showError('Please enter valid values');
+                return;
+            }
+
+            resultDiv.classList.remove('show');
+            errorDiv.classList.remove('show');
+            submitButton.textContent = 'Predicting...';
+            submitButton.disabled = true;
+
+            try {
+                const predictUrl = apiUrl.endsWith('/') ? apiUrl + 'predict' : apiUrl + '/predict';
+                const response = await fetch(predictUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    const price = data.prediction;
+                    const formattedPrice = new Intl.NumberFormat('en-US', {
+                        style: 'currency', currency: 'USD',
+                        minimumFractionDigits: 0, maximumFractionDigits: 0
+                    }).format(price);
+
+                    priceElement.textContent = formattedPrice;
+                    resultDetails.innerHTML = `<div>${formData.bedrooms} bed • ${formData.bathrooms} bath • ${formData.sqft.toLocaleString()} sqft • ${formData.age} yrs</div>`;
+                    resultDiv.classList.add('show');
+                } else {
+                    showError(data.message || 'Failed to get prediction');
+                }
+            } catch (error) {
+                showError('Connection error. Check the API URL');
+            } finally {
+                submitButton.textContent = 'Predict Price';
+                submitButton.disabled = false;
+            }
+        });
+
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+            resultDiv.classList.remove('show');
+        }
+    </script>
+</body>
+</html>

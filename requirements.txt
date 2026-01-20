@@ -1,0 +1,15 @@
+flask==3.0.3
+flask-cors==4.0.1
+scikit-learn==1.4.2
+numpy==1.26.4
+pandas==2.2.2
+joblib==1.4.2
+gunicorn==22.0.0
+werkzeug==3.0.3
+markupsafe==2.1.5
+jinja2==3.1.4
+itsdangerous==2.2.0
+click==8.1.7
+blinker==1.8.2
+scipy==1.12.0
+threadpoolctl==3.2.0
